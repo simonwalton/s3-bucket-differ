@@ -9,22 +9,32 @@ import (
 )
 
 type S3Object struct {
-	key string
-	sha string
+	key  string
+	size int64
+}
+
+func NewS3Object(obj *types.Object) *S3Object {
+	return &S3Object{
+		key:  *obj.Key,
+		size: obj.Size,
+	}
+}
+
+type S3ObjectPair struct {
+	pair [2]*S3Object
 }
 
 type S3Bucket struct {
 	name      string
 	paginator *s3.ListObjectsV2Paginator
-}
-
-func (b *S3Bucket) HasMoreItems() bool {
-	return b.paginator.HasMorePages()
+	pageCache []types.Object
+	pageIdx   int
 }
 
 func NewBucket(client *s3.Client, bucketName string, maxKeys int) *S3Bucket {
 	b := new(S3Bucket)
 	b.name = bucketName
+	b.pageIdx = 0
 
 	params := &s3.ListObjectsV2Input{
 		Bucket: &b.name,
@@ -37,18 +47,35 @@ func NewBucket(client *s3.Client, bucketName string, maxKeys int) *S3Bucket {
 	return b
 }
 
-func (b *S3Bucket) NextObjects() []types.Object {
-	var i int
+func (b *S3Bucket) NextObject() *S3Object {
+	if b.pageIdx == len(b.pageCache) {
+		InsertNextPageIntoCache(b)
+		b.pageIdx = 0
+	}
+
+	if len(b.pageCache) == 0 {
+		return nil
+	}
+
+	obj := &b.pageCache[b.pageIdx]
+	b.pageIdx++
+
+	return NewS3Object(obj)
+}
+
+func InsertNextPageIntoCache(bucket *S3Bucket) {
+	bucket.pageCache = NextObjects(bucket)
+}
+
+func NextObjects(bucket *S3Bucket) []types.Object {
 	items := make([]types.Object, 0)
 
-	if b.paginator.HasMorePages() {
-		i++
-
+	if bucket.paginator.HasMorePages() {
 		// Next Page takes a new context for each page retrieval. This is where
 		// you could add timeouts or deadlines.
-		page, err := b.paginator.NextPage(context.TODO())
+		page, err := bucket.paginator.NextPage(context.TODO())
 		if err != nil {
-			log.Fatalf("failed to get page %v, %v", i, err)
+			log.Fatalf("failed to get page %v", err)
 		}
 
 		// Log the objects found
