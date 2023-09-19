@@ -5,6 +5,19 @@ import (
 	"os"
 )
 
+func crossCorrelate(buckets *S3BucketPair, itemMap *S3CrossBucketItemMap) {
+	for _, v := range itemMap.store {
+		if v[0] != nil && v[1] == nil {
+			obj := buckets.b.GetObjectMetadata(v[0].key)
+			itemMap.Set(obj, 1)
+		}
+		if v[0] == nil && v[1] != nil {
+			obj := buckets.b.GetObjectMetadata(v[1].key)
+			itemMap.Set(obj, 0)
+		}
+	}
+}
+
 func compare(buckets *S3BucketPair) {
 	itemMap := NewS3CrossBucketItemMap()
 	itemsRemain := true
@@ -20,6 +33,9 @@ func compare(buckets *S3BucketPair) {
 
 		itemsRemain = itemA != nil || itemB != nil
 	}
+
+	crossCorrelate(buckets, itemMap)
+	drawSummary(buckets, itemMap)
 }
 
 func printObjectList(items [](*S3Object)) {

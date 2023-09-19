@@ -20,6 +20,13 @@ func NewS3Object(obj *types.Object) *S3Object {
 	}
 }
 
+func NewS3ObjectFromHeadObject(key string, obj *s3.HeadObjectOutput) *S3Object {
+	return &S3Object{
+		key:  key,
+		size: obj.ContentLength,
+	}
+}
+
 type S3BucketPair struct {
 	a *S3Bucket
 	b *S3Bucket
@@ -34,12 +41,14 @@ type S3Bucket struct {
 	paginator *s3.ListObjectsV2Paginator
 	pageCache []types.Object
 	pageIdx   int
+	client    *s3.Client
 }
 
 func NewBucket(client *s3.Client, bucketName string, maxKeys int) *S3Bucket {
 	b := new(S3Bucket)
 	b.name = bucketName
 	b.pageIdx = 0
+	b.client = client
 
 	params := &s3.ListObjectsV2Input{
 		Bucket: &b.name,
@@ -50,6 +59,19 @@ func NewBucket(client *s3.Client, bucketName string, maxKeys int) *S3Bucket {
 		}
 	})
 	return b
+}
+
+func (b *S3Bucket) GetObjectMetadata(key string) *S3Object {
+	resp, err := b.client.HeadObject(context.TODO(), &s3.HeadObjectInput{
+		Bucket: &b.name,
+		Key:    &key,
+	})
+
+	if err != nil {
+		return nil
+	}
+
+	return NewS3ObjectFromHeadObject(key, resp)
 }
 
 func (b *S3Bucket) NextObject() *S3Object {
