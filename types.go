@@ -20,6 +20,11 @@ func NewS3Object(obj *types.Object) *S3Object {
 	}
 }
 
+type S3BucketPair struct {
+	a *S3Bucket
+	b *S3Bucket
+}
+
 type S3ObjectPair struct {
 	pair [2]*S3Object
 }
@@ -85,4 +90,26 @@ func NextObjects(bucket *S3Bucket) []types.Object {
 	}
 
 	return items
+}
+
+type S3CrossBucketItemMap struct {
+	store map[string]([]*S3Object)
+}
+
+func NewS3CrossBucketItemMap() *S3CrossBucketItemMap {
+	itemMap := new(S3CrossBucketItemMap)
+	itemMap.store = make(map[string]([]*S3Object))
+	return itemMap
+}
+
+func (m *S3CrossBucketItemMap) Set(item *S3Object, idx int) {
+	if item == nil {
+		return
+	}
+
+	if _, ok := m.store[item.key]; !ok {
+		m.store[item.key] = make([]*S3Object, 2)
+	}
+
+	m.store[item.key][idx] = item
 }

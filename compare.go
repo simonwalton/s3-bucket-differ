@@ -1,42 +1,22 @@
 package main
 
-import "fmt"
-
-var (
-	store = make(map[string]([]*S3Object))
+import (
+	"fmt"
+	"os"
 )
 
-func storeItem(item *S3Object, idx int) {
-	if item == nil {
-		return
-	}
-
-	if _, ok := store[item.key]; !ok {
-		store[item.key] = make([]*S3Object, 2)
-	}
-
-	store[item.key][idx] = item
-}
-
-// TODO: compare should not have to care that buckets are paged, so we need the bucket to simply return a next item and we operate one at a time
-func compare(bucketA *S3Bucket, bucketB *S3Bucket) {
+func compare(buckets *S3BucketPair) {
+	itemMap := NewS3CrossBucketItemMap()
 	itemsRemain := true
 
 	for itemsRemain {
-		itemA := bucketA.NextObject()
-		itemB := bucketB.NextObject()
+		itemA := buckets.a.NextObject()
+		itemB := buckets.b.NextObject()
 
-		storeItem(itemA, 0)
-		storeItem(itemB, 1)
+		itemMap.Set(itemA, 0)
+		itemMap.Set(itemB, 1)
 
-		if itemA != nil {
-			println("A " + itemA.key)
-		}
-		if itemB != nil {
-			println("B " + itemB.key)
-		}
-
-		drawSummary()
+		drawSummary(buckets, itemMap)
 
 		itemsRemain = itemA != nil || itemB != nil
 	}
@@ -44,15 +24,16 @@ func compare(bucketA *S3Bucket, bucketB *S3Bucket) {
 
 func printObjectList(items [](*S3Object)) {
 	for _, item := range items {
-		println("- " + item.key)
+		fmt.Fprintf(os.Stderr, " - %s\n", item.key)
 	}
 }
 
-func drawSummary() {
+func drawSummary(buckets *S3BucketPair, itemMap *S3CrossBucketItemMap) {
 	common := 0
 	onlyA := make([](*S3Object), 0)
 	onlyB := make([](*S3Object), 0)
-	for _, v := range store {
+
+	for _, v := range itemMap.store {
 		if v[0] != nil && v[1] != nil {
 			common++
 		}
@@ -64,10 +45,14 @@ func drawSummary() {
 		}
 	}
 
-	fmt.Printf("\x1b[2J")
-	fmt.Printf("In common %d\n", common)
-	fmt.Printf("Only A\n")
+	fmt.Fprintf(os.Stderr, "\x1b[2J\n")
+	fmt.Fprintf(os.Stderr, "🪣  Bucket Comparison\n")
+	fmt.Fprintf(os.Stderr, "  A: %s\n", buckets.a.name)
+	fmt.Fprintf(os.Stderr, "  B: %s\n", buckets.b.name)
+
+	fmt.Fprintf(os.Stderr, "\nIn common: %d\n", common)
+	fmt.Fprintf(os.Stderr, "Only A: (%d)\n", len(onlyA))
 	printObjectList(onlyA)
-	fmt.Printf("Only B\n")
+	fmt.Fprintf(os.Stderr, "Only B: (%d)\n", len(onlyB))
 	printObjectList(onlyB)
 }

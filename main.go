@@ -40,8 +40,10 @@ func main() {
 	// Create an Amazon S3 service client
 	client := s3.NewFromConfig(cfg)
 
-	bucketA := NewBucket(client, bucketNameA, maxKeys)
-	bucketB := NewBucket(client, bucketNameB, maxKeys)
+	buckets := S3BucketPair{
+		a: NewBucket(client, bucketNameA, maxKeys),
+		b: NewBucket(client, bucketNameB, maxKeys),
+	}
 
-	compare(bucketA, bucketB)
+	compare(&buckets)
 }
