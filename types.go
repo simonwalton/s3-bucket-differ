@@ -62,6 +62,11 @@ func NewBucket(client *s3.Client, bucketName string, maxKeys int) *S3Bucket {
 }
 
 func (b *S3Bucket) GetObjectMetadata(key string) *S3Object {
+	obj := b.GetInPageCache(key)
+	if obj != nil {
+		return obj
+	}
+
 	resp, err := b.client.HeadObject(context.TODO(), &s3.HeadObjectInput{
 		Bucket: &b.name,
 		Key:    &key,
@@ -72,6 +77,16 @@ func (b *S3Bucket) GetObjectMetadata(key string) *S3Object {
 	}
 
 	return NewS3ObjectFromHeadObject(key, resp)
+}
+
+func (b *S3Bucket) GetInPageCache(key string) *S3Object {
+	for _, e := range b.pageCache {
+		if *e.Key == key {
+			return NewS3Object(&e)
+		}
+	}
+
+	return nil
 }
 
 func (b *S3Bucket) NextObject() *S3Object {
@@ -98,14 +113,11 @@ func NextObjects(bucket *S3Bucket) []types.Object {
 	items := make([]types.Object, 0)
 
 	if bucket.paginator.HasMorePages() {
-		// Next Page takes a new context for each page retrieval. This is where
-		// you could add timeouts or deadlines.
 		page, err := bucket.paginator.NextPage(context.TODO())
 		if err != nil {
 			log.Fatalf("failed to get page %v", err)
 		}
 
-		// Log the objects found
 		for _, obj := range page.Contents {
 			items = append(items, obj)
 		}
@@ -114,6 +126,10 @@ func NextObjects(bucket *S3Bucket) []types.Object {
 	return items
 }
 
+var (
+	BUCKET_UNCHECKED = new(S3Object)
+)
+
 type S3CrossBucketItemMap struct {
 	store map[string]([]*S3Object)
 }
@@ -121,17 +137,34 @@ type S3CrossBucketItemMap struct {
 func NewS3CrossBucketItemMap() *S3CrossBucketItemMap {
 	itemMap := new(S3CrossBucketItemMap)
 	itemMap.store = make(map[string]([]*S3Object))
+
 	return itemMap
 }
 
-func (m *S3CrossBucketItemMap) Set(item *S3Object, idx int) {
-	if item == nil {
-		return
+func (m *S3CrossBucketItemMap) SetWithItem(item *S3Object, idx int) {
+	if item != nil {
+		m.SetWithKey(item.key, item, idx)
+	}
+}
+
+func (m *S3CrossBucketItemMap) SetWithKey(key string, item *S3Object, idx int) {
+	if _, ok := m.store[key]; !ok {
+		m.store[key] = make([]*S3Object, 2)
+		m.store[key][0] = BUCKET_UNCHECKED
+		m.store[key][1] = BUCKET_UNCHECKED
 	}
 
-	if _, ok := m.store[item.key]; !ok {
-		m.store[item.key] = make([]*S3Object, 2)
-	}
+	m.store[key][idx] = item
+}
 
-	m.store[item.key][idx] = item
+func (m *S3CrossBucketItemMap) IsFoundObject(key string, idx int) bool {
+	return m.store[key] != nil && m.store[key][idx] != nil && m.store[key][idx] != BUCKET_UNCHECKED
+}
+
+func (m *S3CrossBucketItemMap) IsUncheckedObject(key string, idx int) bool {
+	return m.store[key] != nil && m.store[key][idx] == BUCKET_UNCHECKED
+}
+
+func (m *S3CrossBucketItemMap) IsAbsentObject(key string, idx int) bool {
+	return m.store[key] != nil && m.store[key][idx] == nil
 }

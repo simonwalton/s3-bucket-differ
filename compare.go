@@ -6,14 +6,14 @@ import (
 )
 
 func crossCorrelate(buckets *S3BucketPair, itemMap *S3CrossBucketItemMap) {
-	for _, v := range itemMap.store {
-		if v[0] != nil && v[1] == nil {
+	for k, v := range itemMap.store {
+		if itemMap.IsFoundObject(k, 0) && itemMap.IsUncheckedObject(k, 1) {
 			obj := buckets.b.GetObjectMetadata(v[0].key)
-			itemMap.Set(obj, 1)
+			itemMap.SetWithKey(v[0].key, obj, 1)
 		}
-		if v[0] == nil && v[1] != nil {
-			obj := buckets.b.GetObjectMetadata(v[1].key)
-			itemMap.Set(obj, 0)
+		if itemMap.IsFoundObject(k, 1) && itemMap.IsUncheckedObject(k, 0) {
+			obj := buckets.a.GetObjectMetadata(v[1].key)
+			itemMap.SetWithKey(v[1].key, obj, 0)
 		}
 	}
 }
@@ -23,19 +23,19 @@ func compare(buckets *S3BucketPair) {
 	itemsRemain := true
 
 	for itemsRemain {
-		itemA := buckets.a.NextObject()
-		itemB := buckets.b.NextObject()
+		itemA, itemB := buckets.a.NextObject(), buckets.b.NextObject()
 
-		itemMap.Set(itemA, 0)
-		itemMap.Set(itemB, 1)
+		itemMap.SetWithItem(itemA, 0)
+		itemMap.SetWithItem(itemB, 1)
 
-		drawSummary(buckets, itemMap)
+		printSummary(buckets, itemMap)
+		crossCorrelate(buckets, itemMap)
 
 		itemsRemain = itemA != nil || itemB != nil
 	}
 
 	crossCorrelate(buckets, itemMap)
-	drawSummary(buckets, itemMap)
+	printSummary(buckets, itemMap)
 }
 
 func printObjectList(items [](*S3Object)) {
@@ -44,7 +44,7 @@ func printObjectList(items [](*S3Object)) {
 	}
 }
 
-func drawSummary(buckets *S3BucketPair, itemMap *S3CrossBucketItemMap) {
+func printSummary(buckets *S3BucketPair, itemMap *S3CrossBucketItemMap) {
 	common := 0
 	onlyA := make([](*S3Object), 0)
 	onlyB := make([](*S3Object), 0)
