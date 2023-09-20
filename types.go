@@ -28,8 +28,19 @@ func NewS3ObjectFromHeadObject(key string, obj *s3.HeadObjectOutput) *S3Object {
 }
 
 type S3BucketPair struct {
-	a *S3Bucket
-	b *S3Bucket
+	buckets []*S3Bucket
+	currIdx int
+}
+
+func (b *S3BucketPair) NextAlternateObject() (*S3Object, int) {
+	idx := b.currIdx
+	obj := b.buckets[idx].NextObject()
+
+	if obj != nil {
+		b.currIdx = (b.currIdx + 1) % 2
+	}
+
+	return obj, idx
 }
 
 type S3ObjectPair struct {
@@ -147,6 +158,15 @@ func (m *S3CrossBucketItemMap) SetWithItem(item *S3Object, idx int) {
 	}
 }
 
+func (m *S3CrossBucketItemMap) SetWithItems(itemA *S3Object, itemB *S3Object) {
+	if itemA != nil {
+		m.SetWithKey(itemA.key, itemA, 0)
+	}
+	if itemB != nil {
+		m.SetWithKey(itemB.key, itemB, 1)
+	}
+}
+
 func (m *S3CrossBucketItemMap) SetWithKey(key string, item *S3Object, idx int) {
 	if _, ok := m.store[key]; !ok {
 		m.store[key] = make([]*S3Object, 2)
@@ -155,6 +175,11 @@ func (m *S3CrossBucketItemMap) SetWithKey(key string, item *S3Object, idx int) {
 	}
 
 	m.store[key][idx] = item
+}
+
+func (m *S3CrossBucketItemMap) ObjectKeyExists(key string) bool {
+	_, ok := m.store[key]
+	return ok
 }
 
 func (m *S3CrossBucketItemMap) IsFoundObject(key string, idx int) bool {

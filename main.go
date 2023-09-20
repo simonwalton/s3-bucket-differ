@@ -41,8 +41,11 @@ func main() {
 	client := s3.NewFromConfig(cfg)
 
 	buckets := S3BucketPair{
-		a: NewBucket(client, bucketNameA, maxKeys),
-		b: NewBucket(client, bucketNameB, maxKeys),
+		buckets: [](*S3Bucket){
+			NewBucket(client, bucketNameA, maxKeys),
+			NewBucket(client, bucketNameB, maxKeys),
+		},
+		currIdx: 0,
 	}
 
 	compare(&buckets)
