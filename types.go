@@ -182,6 +182,18 @@ func (m *S3CrossBucketItemMap) ObjectKeyExists(key string) bool {
 	return ok
 }
 
+func (m *S3CrossBucketItemMap) AreBothFoundObjects(key string) bool {
+	return m.IsFoundObject(key, 0) && m.IsFoundObject(key, 1)
+}
+
+func (m *S3CrossBucketItemMap) IsOnlyGivenObjectFound(key string, idx int) bool {
+	return m.IsFoundObject(key, idx) && !m.IsFoundObject(key, (idx+1)%2)
+}
+
+func (m *S3CrossBucketItemMap) IsOnlyOneObjectFound(key string) bool {
+	return m.IsFoundObject(key, 0) != m.IsFoundObject(key, 1)
+}
+
 func (m *S3CrossBucketItemMap) IsFoundObject(key string, idx int) bool {
 	return m.store[key] != nil && m.store[key][idx] != nil && m.store[key][idx] != BUCKET_UNCHECKED
 }

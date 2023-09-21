@@ -2,10 +2,10 @@
 BINARY=./bin/compare
 
 build:
-	go build -o ${BINARY} compare.go types.go main.go
+	@go build -o ${BINARY} output.go compare.go types.go main.go
 
 run: build
-	${BINARY} -bucket-a=simonetes-bucket-a -bucket-b=simonetes-bucket-b
+	@${BINARY} -bucket-a=simonetes-bucket-a -bucket-b=simonetes-bucket-b
 
 clean:
 	go clean
