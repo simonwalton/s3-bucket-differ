@@ -40,16 +40,6 @@ func printSummary(buckets *S3BucketPair, itemMap *S3CrossBucketItemMap) {
 	fmt.Fprintf(os.Stderr, "  B: %s\n", buckets.buckets[1].name)
 
 	fmt.Fprintf(os.Stderr, "\nIn common: %d\n", common)
-	fmt.Fprintf(os.Stderr, "Only A: (%d)\n", len(onlyA))
-
-	printObjectList(onlyA[:min(len(onlyA), MAX_OBJECT_LIST_HEAD)])
-
-	fmt.Fprintf(os.Stderr, "Only B: (%d)\n", len(onlyB))
-	printObjectList(onlyB[:min(len(onlyB), MAX_OBJECT_LIST_HEAD)])
-}
-
-func printObjectList(items [](*S3Object)) {
-	for _, item := range items {
-		fmt.Fprintf(os.Stderr, " - %s\n", item.key)
-	}
+	fmt.Fprintf(os.Stderr, "Only A: %d\n", len(onlyA))
+	fmt.Fprintf(os.Stderr, "Only B: %d\n", len(onlyB))
 }

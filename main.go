@@ -17,7 +17,7 @@ var (
 func init() {
 	flag.StringVar(&bucketNameA, "bucket-a", "", "The `name` of the first bucket.")
 	flag.StringVar(&bucketNameB, "bucket-b", "", "The `name` of the second bucket.")
-	flag.IntVar(&maxKeys, "max-keys", 5, "The maximum number of `keys per page` to retrieve at once.")
+	flag.IntVar(&maxKeys, "max-keys", 50, "The maximum number of `keys per page` to retrieve at once.")
 }
 
 func main() {
