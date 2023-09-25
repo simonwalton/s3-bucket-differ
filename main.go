@@ -31,13 +31,13 @@ func main() {
 		log.Fatal("Please supply the name of bucket B")
 	}
 
-	// Load the Shared AWS Configuration (~/.aws/config)
+	// load the Shared AWS Configuration (~/.aws/config)
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Create an Amazon S3 service client
+	// create an Amazon S3 service client
 	client := s3.NewFromConfig(cfg)
 
 	buckets := S3BucketPair{
@@ -48,5 +48,11 @@ func main() {
 		currIdx: 0,
 	}
 
-	compare(&buckets)
+	for i := range compare(&buckets) {
+		printSummary(i.buckets, i.itemMap)
+
+		if i.firstVisit {
+			appendDetail(i.currObject.key, i.itemMap)
+		}
+	}
 }

@@ -205,3 +205,10 @@ func (m *S3CrossBucketItemMap) IsUncheckedObject(key string, idx int) bool {
 func (m *S3CrossBucketItemMap) IsAbsentObject(key string, idx int) bool {
 	return m.store[key] != nil && m.store[key][idx] == nil
 }
+
+type ComparisonResult struct {
+	itemMap    *S3CrossBucketItemMap
+	buckets    *S3BucketPair
+	firstVisit bool
+	currObject *S3Object
+}

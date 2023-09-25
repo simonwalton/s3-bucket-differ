@@ -13,26 +13,25 @@ func crossCorrelate(buckets *S3BucketPair, itemMap *S3CrossBucketItemMap) {
 	}
 }
 
-func compare(buckets *S3BucketPair) {
+func compare(buckets *S3BucketPair) chan ComparisonResult {
+	ch := make(chan ComparisonResult)
 	itemMap := NewS3CrossBucketItemMap()
-
-	writeDetailHeader(buckets)
 	obj, idx := buckets.NextAlternateObject()
 
-	for obj != nil {
-		alreadyVisited := itemMap.ObjectKeyExists(obj.key)
-		itemMap.SetWithItem(obj, idx)
+	go func(ch chan ComparisonResult) {
+		for obj != nil {
+			firstVisit := itemMap.ObjectKeyExists(obj.key)
+			itemMap.SetWithItem(obj, idx)
 
-		crossCorrelate(buckets, itemMap)
-		printSummary(buckets, itemMap)
+			crossCorrelate(buckets, itemMap)
 
-		if !alreadyVisited {
-			appendDetail(obj.key, itemMap)
+			ch <- ComparisonResult{itemMap, buckets, firstVisit, obj}
+
+			obj, idx = buckets.NextAlternateObject()
 		}
 
-		obj, idx = buckets.NextAlternateObject()
-	}
+		close(ch)
+	}(ch)
 
-	crossCorrelate(buckets, itemMap)
-	printSummary(buckets, itemMap)
+	return ch
 }
