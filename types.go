@@ -13,6 +13,11 @@ type S3Object struct {
 	size int64
 }
 
+type S3ObjectAndSide struct {
+	object *S3Object
+	idx    int
+}
+
 func NewS3Object(obj *types.Object) *S3Object {
 	return &S3Object{
 		key:  *obj.Key,
@@ -30,6 +35,22 @@ func NewS3ObjectFromHeadObject(key string, obj *s3.HeadObjectOutput) *S3Object {
 type S3BucketPair struct {
 	buckets []*S3Bucket
 	currIdx int
+}
+
+func (b *S3BucketPair) GetAllObjectsAlternately() chan S3ObjectAndSide {
+	ch := make(chan S3ObjectAndSide)
+	obj, idx := b.NextAlternateObject()
+
+	go func(ch chan S3ObjectAndSide) {
+		for obj != nil {
+			ch <- S3ObjectAndSide{obj, idx}
+			obj, idx = b.NextAlternateObject()
+		}
+
+		close(ch)
+	}(ch)
+
+	return ch
 }
 
 func (b *S3BucketPair) NextAlternateObject() (*S3Object, int) {

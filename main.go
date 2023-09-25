@@ -48,11 +48,13 @@ func main() {
 		currIdx: 0,
 	}
 
-	for i := range compare(&buckets) {
-		printSummary(i.buckets, i.itemMap)
+	doOutput := func(r ComparisonResult) {
+		printSummary(r.buckets, r.itemMap)
 
-		if i.firstVisit {
-			appendDetail(i.currObject.key, i.itemMap)
+		if r.firstVisit {
+			appendDetail(r.currObject.key, r.itemMap)
 		}
 	}
+
+	compare(&buckets, doOutput)
 }
