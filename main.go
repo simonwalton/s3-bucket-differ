@@ -56,5 +56,10 @@ func main() {
 		}
 	}
 
-	compare(&buckets, doOutput)
+	comparer := new(BucketComparer)
+	comparer.buckets = &buckets
+	correlator := new(BucketCrossCorrelator)
+	correlator.buckets = &buckets
+
+	comparer.Compare(correlator, doOutput)
 }
